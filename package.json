@@ -1,8 +1,8 @@
 {
-  "name": "homework2",
+  "name": "homework3",
   "version": "1.0.0",
   "description": "",
-  "main": "hw2.js",
+  "main": "hw3.js",
   "scripts": {
     "test": "jest"
   },
