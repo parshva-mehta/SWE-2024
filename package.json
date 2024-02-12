@@ -1,0 +1,16 @@
+{
+  "name": "jesttesting",
+  "version": "1.0.0",
+  "description": "",
+  "main": "hw1.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+
+  "dependencies": {
+    "prompt-sync": "^4.2.0"
+  }
+}
