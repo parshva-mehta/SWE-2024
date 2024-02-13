@@ -26,38 +26,41 @@ function isValidEvent(event) {
     const requiredProperties = ['DTSTART', 'DTSTAMP', 'METHOD', 'STATUS'];
     const optionalProperties = ['CREATED', 'DTEND', 'DURATION', 'LAST-MODIFIED', 'NAME', 'ORGANIZER', 'DESCRIPTION', 'ATTENDEE'];
 
-    // Check if all required properties are present and valid
     for (let i = 0; i < requiredProperties.length; i++) {
         const prop = requiredProperties[i];
 
+        // Validates all required properties in ICal
         if (!event.hasOwnProperty(prop)) {
             throw new Error("Event is missing required property");
         }
 
-        // Validate DATE-TIME properties
+        // Validates the DATE-TIME format in the required properties
         if (prop === 'DTSTART' || prop === 'DTSTAMP') {
             if (!isValidICalDateTime(event[prop])) {
                 throw new Error("Invalid DATE-TIME format in property");
             }
         }
 
-        // Specific validation for METHOD and STATUS
+        // Validates the METHOD and STATUS properties as project requirements state
         if (prop === 'METHOD' && event[prop] !== 'REQUEST') {
             throw new Error('Invalid METHOD value. Only METHOD:REQUEST is accepted.');
         }
+
+        // Validates the STATUS property possibilities
         if (prop === 'STATUS' && !['TENTATIVE', 'CONFIRMED', 'CANCELLED'].includes(event[prop])) {
             throw new Error('Invalid STATUS value. Only "TENTATIVE", "CONFIRMED", or "CANCELLED" are accepted.');
         }
     }
 
-    // Handle optional properties (no strict validation required)
+
+    // Validates the optional properties - Ignore if not in required. If property is not in required or optional, throw error- not warning (Handled in process ical function)
     for (const prop in event) {
         if (!requiredProperties.includes(prop) && !optionalProperties.includes(prop)) {
             console.warn(`Warning: Unrecognized property "${prop}" will be ignored.`);
         }
     }
 
-    // DTStamp should be before DTStart
+    // Validates the DTSTAMP occurs before DTSTART
     const dtStart = new Date(event['DTSTART']);
     const dtStamp = new Date(event['DTSTAMP']);
     if (dtStamp > dtStart) {
@@ -122,6 +125,8 @@ function processICalFile(filePath, callback) {
         let inEvent = false;
         const validProperties = ['BEGIN', 'END', 'DTSTART', 'DTSTAMP', 'METHOD', 'STATUS', 'CREATED', 'DTEND', 'DURATION', 'LAST-MODIFIED', 'NAME', 'ORGANIZER', 'DESCRIPTION', 'ATTENDEE', 'VERSION', 'PRODID']; 
 
+        // Processing algorithm taken directly from Hw2 and modified to fit the requirements of this problem
+        // Valid properties invoked to check if any unrecognized properties are present in the VEVENT component
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (line === 'BEGIN:VCALENDAR') {
@@ -132,18 +137,18 @@ function processICalFile(filePath, callback) {
                 if (!inCalendar) {
                     throw new Error('VEVENT found outside of VCALENDAR');
                 }
-                inEvent = true;
-                currentEvent = {};
+                inEvent = true; // Flag to indicate that we are in an event
+                currentEvent = {}; // Instantiates a new event object
             } else if (line === 'END:VEVENT') {
                 if (!inEvent) {
                     throw new Error('END:VEVENT without BEGIN:VEVENT');
                 }
                 inEvent = false;
                 if (isValidEvent(currentEvent)) {
-                    events.push(currentEvent);
+                    events.push(currentEvent); // Push to event array
                 }
                 currentEvent = {};
-            } else if (inEvent) {
+            } else if (inEvent) {  // Assuming all validations are passed, push the properties to the current event object
                 let [key, value] = line.split(':').map(s => s.trim());
                 if (key && value) {
                     if (!validProperties.includes(key.toUpperCase())) {
@@ -155,11 +160,18 @@ function processICalFile(filePath, callback) {
             }
         }
 
-        // Check for the mandatory VERSION and PRODID properties
+        // Check for required properties in VCALENDAR - Constant values
         if (!data.includes('VERSION:2.0') || !data.includes('PRODID:')) {
             throw new Error('Missing required VERSION or PRODID in VCALENDAR');
         }
 
+
+        // Validates that there should not be multiple events on the same day
+        let dates = events.map(event => event['DTSTART']);
+        if (dates.length !== new Set(dates).size) {
+            throw new Error('Multiple events on the same day');
+        }
+        
         callback(null, events);
     });
 }

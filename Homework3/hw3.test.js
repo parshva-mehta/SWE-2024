@@ -1,3 +1,15 @@
+/* 
+Author: Parshva Mehta
+Date: 02/09/2024
+
+Assignment: Homework 3 Testing file
+
+Testing file for the processICalFile function in hw3.js. Uses JEST's mocking feature to test the function with different iCalendar file contents in order to avoid file I/O operations.
+Should be pretty self explanatory, 2 test suites are defined, one for valid cases and one for edge cases.
+
+:)
+*/
+
 const fs = require('fs');
 const { processICalFile } = require('./hw3');
 
@@ -12,13 +24,13 @@ describe('iCalendar File Processing Valid Cases', () => {
     test('should correctly process a valid iCalendar file', () => {
         const mockData = `BEGIN:VCALENDAR
                           VERSION:2.0
-                          PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                          PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                           BEGIN:VEVENT
                           DTSTART:20240101T090000
                           DTEND:20240101T100000
                           METHOD:REQUEST
                           STATUS:CONFIRMED
-                          SUMMARY:New Year's Day
+                          SUMMARY:DOCTOR VISIT
                           END:VEVENT
                           END:VCALENDAR`;
 
@@ -32,20 +44,20 @@ describe('iCalendar File Processing Valid Cases', () => {
     test('should correctly process multiple VEVENT components', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
@@ -64,7 +76,7 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should throw an error for missing required properties', () => {
         const mockData = `BEGIN:VCALENDAR
                           VERSION:2.0
-                          PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                          PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                           BEGIN:VEVENT
                           DTSTART:20240101T090000
                           END:VEVENT
@@ -79,11 +91,11 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should throw an error for invalid DATE-TIME format', () => {
         const mockData = `BEGIN:VCALENDAR
                           VERSION:2.0
-                          PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                          PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                           BEGIN:VEVENT
                           DTSTART:20240101T090000
                           DTEND:20240101T080000
-                          SUMMARY:New Year's Day
+                          SUMMARY:DOCTOR VISIT
                           END:VEVENT
                           END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
@@ -96,13 +108,13 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should throw an error for incorrect METHOD and STATUS values', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:PUBLISH
                             STATUS:I DONT KNOW
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
@@ -119,7 +131,7 @@ describe('iCalendar File Processing Edge Cases', () => {
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT`;
 
         fs.readFileSync.mockImplementation(() => mockData);
@@ -137,7 +149,7 @@ describe('iCalendar File Processing Edge Cases', () => {
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT`;
         fs.readFileSync.mockImplementation(() => mockData);
         processICalFile('path', (err, data) => {
@@ -149,13 +161,13 @@ describe('iCalendar File Processing Edge Cases', () => {
     // Missing VERSION or PRODID
     test('should throw an error for missing VERSION or PRODID', () => {
         const mockData =   `BEGIN:VCALENDAR
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
@@ -174,7 +186,7 @@ describe('iCalendar File Processing Edge Cases', () => {
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
@@ -187,13 +199,13 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should log a warning for unrecognized properties', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             SAUCE:BBQ
                             END:VEVENT
                             END:VCALENDAR`;
@@ -215,20 +227,20 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should correctly process multiple VEVENT components', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VEVENT
                             END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
@@ -242,13 +254,13 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should throw an error for duplicate properties in VEVENT', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             DTSTART:20240101T090000
                             END:VEVENT
                             END:VCALENDAR`;
@@ -262,7 +274,7 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should throw an error for invalid property format', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
@@ -281,18 +293,63 @@ describe('iCalendar File Processing Edge Cases', () => {
     test('should throw an error for incomplete VEVENT block', () => {
         const mockData =   `BEGIN:VCALENDAR
                             VERSION:2.0
-                            PRODID:-//XYZ Corp//NONSGML PDA Calendar Version 1.0//EN
+                            PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
                             BEGIN:VEVENT
                             DTSTART:20240101T090000
                             DTEND:20240101T080000
                             METHOD:REQUEST
                             STATUS:CONFIRMED
-                            SUMMARY:New Year's Day
+                            SUMMARY:DOCTOR VISIT
                             END:VCALENDAR`;
         fs.readFileSync.mockImplementation(() => mockData);
         processICalFile('path', (err, data) => {
             expect(err).not.toBeNull();
             expect(err.message).toContain('Incomplete VEVENT block');
+        });
+    });
+    test("should throw an error for DTStamp before DTStart", () => {
+        const mockData = `BEGIN:VCALENDAR
+                          VERSION:2.0
+                          PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
+                          BEGIN:VEVENT
+                          DTSTAMP:20240101T090000
+                          DTSTART:20240101T080000
+                          DTEND:20240101T090000
+                          METHOD:REQUEST
+                          STATUS:CONFIRMED
+                          SUMMARY:DOCTOR VISIT
+                          END:VEVENT
+                          END:VCALENDAR`;
+        fs.readFileSync.mockImplementation(() => mockData);
+        processICalFile('path', (err, data) => {
+            expect(err).not.toBeNull();
+            expect(err.message).toContain('DTStamp before DTStart');
+        });
+    });
+
+    test("should throw an error for multiple events on the same day", () => {
+        const mockData = `BEGIN:VCALENDAR
+                          VERSION:2.0
+                          PRODID:-//XYZ Corp//MOCK ICAL VALIDATOR//EN
+                          BEGIN:VEVENT
+                          DTSTART:20240101T090000
+                          DTEND:20240101T080000
+                          METHOD:REQUEST
+                          STATUS:CONFIRMED
+                          SUMMARY:DOCTOR VISIT
+                          END:VEVENT
+                          BEGIN:VEVENT
+                          DTSTART:20240101T090000
+                          DTEND:20240101T080000
+                          METHOD:REQUEST
+                          STATUS:CONFIRMED
+                          SUMMARY:DOCTOR VISIT
+                          END:VEVENT
+                          END:VCALENDAR`;
+        fs.readFileSync.mockImplementation(() => mockData);
+        processICalFile('path', (err, data) => {
+            expect(err).not.toBeNull();
+            expect(err.message).toContain('Multiple events on the same day');
         });
     });
 });
