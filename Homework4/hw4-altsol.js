@@ -52,6 +52,26 @@ const specialHolidays = [
 ];
 
 
+
+function createICalEventString(start, end, summary, attendee) {
+    return `BEGIN:VEVENT\n` +
+           `UID:${generateUID()}\n` +
+           `DTSTAMP:${formatDateTime(new Date())}\n` +
+           `DTSTART:${formatDateTime(start)}\n` +
+           `DTEND:${formatDateTime(end)}\n` +
+           `SUMMARY:${summary}\n` +
+           `ATTENDEE;CN=${attendee}\n` +
+           `END:VEVENT\n`;
+}
+
+function generateUID() {
+    return 'uid-' + Math.random().toString(36).substr(2, 9);
+}
+
+function formatDateTime(date) {
+    return moment(date).format('YYYYMMDDTHHmmss');
+}
+
 // --------------------------------------------------------- Helper Functions --------------------------------------------------------- // 
 /**
  * Boolean function to check if a given date is a weekend.
@@ -112,39 +132,49 @@ function readICalendarFile() {
  */
 
 function createCalendarEvent(cal, name, email, start, summary) {
-    const event = cal.createEvent({
-        start: moment(start),
-        summary: summary,
-        attendees: [{
-            name: name,
-            email: email,
-        }]
-    });
-    return event;
+    const eventString = createICalEventString(start, new Date(start), summary, name);
+    cal.push(eventString);
+    return eventString; // Assuming you need the event string for some purpose
 }
+
 
 /**
  * Function to save the calendar to an ICS file.
  * @param cal - Calendar object to save to the file.
  * @returns {VOID}
  */
-
 function saveCalendarToFile(cal) {
-    fs.writeFileSync(calendarFilePath, cal.toString(), 'utf8');
+    const calendarString = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Your Company//Your Product//EN',
+        ...cal,
+        'END:VCALENDAR'
+    ].join('\n');
+    fs.writeFileSync(calendarFilePath, calendarString, 'utf8');
 }
+
+
+
 
 /**
  * Function to check if a given date is reserved in the calendar.
- * @param cal - Calendar object to check.
- * @param dateString - Date to check.
- * @returns {Object} - True if the date is reserved, false otherwise.
+ * @param {Object} calData - Parsed iCalendar data.
+ * @param {string} dateString - Date to check in 'YYYY-MM-DD' format.
+ * @returns {boolean} - True if the date is reserved, false otherwise.
  */
+function isDateReserved(calData, dateString) {
+    const targetDate = moment(dateString, 'YYYY-MM-DD');
 
-function isDateReserved(cal, dateString) {
-    return cal.events().some(event => {
-        return moment(event.start()).isSame(moment(dateString), 'day');
+    return Object.values(calData).some(event => {
+        if (event.type === 'VEVENT') {
+            const eventStartDate = moment(event.start);
+            return eventStartDate.isSame(targetDate, 'day');
+        }
+        return false;
     });
 }
+
 
 /**
  * Function to find the next available dates for reservation and compare them to the output from isDateReserved to find valid dates.
@@ -268,7 +298,7 @@ function lookupReservations(cal, eventId) {
 
 
 function main() {
-    const cal = icalGenerator({ name: 'My Calendar' });
+    let cal = [];
     const existingEvents = readICalendarFile();
 
     for (const key in existingEvents) {
