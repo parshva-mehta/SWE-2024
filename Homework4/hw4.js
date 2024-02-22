@@ -1,316 +1,322 @@
 /*
     Author: Parshva Mehta
-    Date: 2/19/2024
-    Assignment: Homework 4
+    Date: 02/21/2024
 
-    Description: This program is an appointment scheduling system that looks at the next (N=4) days and allows the user to reserve a date and time for an appointment. 
-    The program reads and writes to an iCalendar file (calendar.ics) to store the reservations. The user can also cancel and lookup reservations.
-    
-    Although the program asks for an email ID, this is simply to satisfy constraints for the ICal generator library. This email is not used and is not validated.
+    Project: Homework 4
+    Description: This is a simple calendar application that allows users to reserve dates, look up upcoming reservations, cancel reservations, and find the next available dates for booking.
 
-    Dependencies:
-    - node-ical: https://www.npmjs.com/package/node-ical
-    - ical-generator: https://www.npmjs.com/package/ical-generator
-    - moment: https://www.npmjs.com/package/moment
-    - prompt-sync: https://www.npmjs.com/package/prompt-sync
-
-    Test Calandar path: 'calendar.ics'
-    Special Holidays:
-        '2024-01-01', // New Year's Day
-        '2024-01-15', // Martin Luther King Jr. Day
-        '2024-02-19', // Presidents' Day
-        '2024-05-27', // Memorial Day
-        '2024-07-04', // Independence Day
-        '2024-09-02', // Labor Day
-        '2024-10-14', // Columbus Day
-        '2024-11-11', // Veterans Day
-        '2024-11-28', // Thanksgiving Day
-        '2024-12-25', // Christmas Day
-
-    Testing is handled by hw4.test.js, since this is a comprehensive program that requires user input, unit test cases will test each function separately as well as one main function test.
+    Dependencies: ical.js, prompt-sync, fs
 */
 
-
 const fs = require('fs');
-const ical = require('node-ical');
-const icalGenerator = require('ical-generator').default;
-const moment = require('moment');
 const prompt = require('prompt-sync')();
+const ICAL = require('ical.js');
+const path = 'test-calendar.ics';
 
-const calendarFilePath = 'calendar.ics';
-const specialHolidays = [
-    '2024-01-01', // New Year's Day
-    '2024-01-15', // Martin Luther King Jr. Day
-    '2024-02-19', // Presidents' Day
-    '2024-05-27', // Memorial Day
-    '2024-07-04', // Independence Day
-    '2024-09-02', // Labor Day
-    '2024-10-14', // Columbus Day
-    '2024-11-11', // Veterans Day
-    '2024-11-28', // Thanksgiving Day
-    '2024-12-25', // Christmas Day
-];
+// ---------------------------------------------------- Helper Functions ---------------------------------------------------- //
+/*
+    * Function to write a new reservation to the calendar file
+    * @param {string} filePath - The path to the calendar file
+    * @param {ICAL.Component} newEvent - The new event to add to the calendar
+*/
 
-
-// --------------------------------------------------------- Helper Functions --------------------------------------------------------- // 
-/**
- * Boolean function to check if a given date is a weekend.
- * @param {Date} date - Date object to check.
- * @returns {boolean} - True if the date is a weekend, false otherwise.
- */
-
-function isWeekend(date) {
-    return [0, 6].includes(moment(date).day());
-}
-
-/**
- * Boolean function to check if a given date is a special holiday.
- * @param {Date} date - Date object to check.
- * @returns {boolean} - True if the date is a special holiday, false otherwise.
- */
-
-function isSpecialHoliday(date) {
-    return specialHolidays.includes(moment(date).format('YYYY-MM-DD'));
-}
-
-/**
- * Function to convert a time string from 12-hour format to 24-hour format.
- * @param {string} time - String to convert to 24-hour format.
- * @returns {string} - Converted time in 24-hour format.
- */
-
-function convertTo24Hour(time) {
-    return moment(time, ['h:mm A']).format('HH:mm');
-}
-
-
-// --------------------------------------------------------- Read Calendar File Functions ----------------------------------------------//
-/**
- * Function to read in an ICS file and store data in an object.
- * @param NONE
- * @returns {Object} - Parsed ICS file data.
- */
-
-function readICalendarFile() {
+function writeReservationToFile(filePath, newEvent) {
     try {
-        const data = fs.readFileSync(calendarFilePath, 'utf8');
-        return ical.sync.parseICS(data);
-    } catch (err) {
-        console.error('Error reading iCalendar file:', err.message);
-        return null;
+        // Read the existing file content
+        let fileData = fs.readFileSync(filePath, 'utf8').trim();
+        let icalComponent;
+
+        // Check if the file is empty and initialize a new calendar component if needed
+        if (fileData === '') {
+            icalComponent = new ICAL.Component(['vcalendar', [], []]);
+        } 
+        else {
+            // Parse the existing data into an iCalendar component
+            const parsedData = ICAL.parse(fileData);
+            icalComponent = new ICAL.Component(parsedData);
+        }
+
+        // Add the new event as a subcomponent
+        icalComponent.addSubcomponent(newEvent);
+
+        // Convert the iCalendar component back to a string and write to the file
+        const updatedData = icalComponent.toString();
+        fs.writeFileSync(filePath, updatedData);
+
+        // Return true to indicate success
+        return true;
+    } 
+    catch (error) {
+        console.error('Error processing the calendar file:', error.message);
+        return false; // Return false to indicate failure
     }
 }
 
-/**
- * Function to create an event in the calendar.
- * @param {Object} cal - Calendar object to create the event in.
- * @param {string} name - Name of the attendee.
- * @param {string} email - Email of the attendee.
- * @param {Date} start - Start date and time of the event.
- * @param {string} summary - Summary of the event.
- * @returns {Object} - Created event object.
- */
+/*
+    * Function to generate a unique confirmation code  
+    * @returns {string} - A unique confirmation code
+*/
+function generateConfirmationCode() {
+    const characters = '0123456789abcdef';
+    let code = '';
 
-function createCalendarEvent(cal, name, email, start, summary) {
-    const event = cal.createEvent({
-        start: moment(start),
-        summary: summary,
-        attendees: [{
-            name: name,
-            email: email,
-        }]
-    });
-    return event;
-}
-
-/**
- * Function to save the calendar to an ICS file.
- * @param cal - Calendar object to save to the file.
- * @returns {VOID}
- */
-
-function saveCalendarToFile(cal) {
-    fs.writeFileSync(calendarFilePath, cal.toString(), 'utf8');
-}
-
-/**
- * Function to check if a given date is reserved in the calendar.
- * @param cal - Calendar object to check.
- * @param dateString - Date to check.
- * @returns {Object} - True if the date is reserved, false otherwise.
- */
-
-function isDateReserved(cal, dateString) {
-    return cal.events().some(event => {
-        return moment(event.start()).isSame(moment(dateString), 'day');
-    });
-}
-
-/**
- * Function to find the next available dates for reservation and compare them to the output from isDateReserved to find valid dates.
- * @param cal - Calendar object to check.
- * @returns {string} - Array of available dates for reservation.
- */
-
-function findNextAvailableDates(cal) {
-    const availableDates = [];
-    for (let attempts = 0; attempts < 5; attempts++) {
-        const nextDay = moment().add(attempts, 'days');
-        if (!isWeekend(nextDay) && !isSpecialHoliday(nextDay) && !isDateReserved(cal, nextDay)) {
-            availableDates.push(nextDay.format('YYYY-MM-DD'));
+    for (let i = 0; i < 36; i++) {
+        if (i === 8 || i === 13 || i === 18 || i === 23) {
+            code += '-';
+        } 
+        else if (i === 14) {
+            code += '4';
+        } 
+        else if (i === 19) {
+            code += characters.substr(Math.floor(Math.random() * 4) + 8, 1);
+        } 
+        else {
+            code += characters.charAt(Math.floor(Math.random() * characters.length));
         }
     }
 
-    if (availableDates.length === 0) {
-        console.error('No available dates within the next 4 days.');
-        return [];
-    }
-    return availableDates;
+    return code;
 }
 
-// --------------------------------------------------------- Main Functions --------------------------------------------------------- //
+/*
+    * Function to format a date object as YYYYMMDD 
+    * @param {Date} date - The date to format
+    * @returns {string} - The formatted date string
+*/
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
 
-/**
- * Reserves a date for an event in the calendar.
- * 
- * @param {Object} cal - The ical-generator calendar instance.
- * 
- * Prompts the user to choose a date from the available dates, enter the reservation details,
- * and creates an event on the chosen date. Throws an error and exits if an invalid choice
- * is made or if the time format is incorrect.
- * 
- * @throws {Error} If an invalid date choice is made or time format is incorrect.
- */
+/*
+    * Function to read the calendar file and return an array of booked dates
+    * @returns {Array} - An array of booked dates in the format YYYYMMDD
+*/
+function getBookedDates() {
+    try {
+        // Read the calendar data file and check if it's empty
+        const data = fs.readFileSync(path, 'utf8').trim();
+        if (data === '') {
+            return [];
+        }
+
+        // Parse the calendar data and create an iCalendar component
+        const icalComponent = new ICAL.Component(ICAL.parse(data));
+
+        // Extract and format the start dates of all events
+        return icalComponent.getAllSubcomponents('vevent').map(vevent => {
+            const event = new ICAL.Event(vevent);
+            // Convert the date to a more friendly format (YYYYMMDD)
+            const jsDate = event.startDate.toJSDate();
+            return jsDate.getFullYear() +
+                   ('0' + (jsDate.getMonth() + 1)).slice(-2) +
+                   ('0' + jsDate.getDate()).slice(-2);
+        });
+    }
+    catch (error) {
+        console.error('Error reading reservations file:', error);
+        return [];
+    }
+}
 
 
-function reserveDate(cal, chosenNumber, attendeeName, attendeeEmail, startTime, summary) {
-    const availableDates = findNextAvailableDates(cal);
-    if (availableDates.length === 0) {
-        console.log("No available dates to reserve.");
+// ---------------------------------------------------- Main Functions ---------------------------------------------------- //
+
+/*
+    * Function to reserve a date for an attendee
+    * @param {string} attendee - The name of the attendee
+    * @param {string} startDate - The date and time of the reservation (YYYYMMDDTHHMMSS)
+    * @param {string} todayDate - The current date and time (YYYYMMDDTHHMMSS)
+    * @returns {void}
+*/
+function reserveDate(attendee, startDate, todayDate) {
+    // Function to create a Date object from a YYYYMMDD format string
+    const createDate = (dateStr) => new Date(dateStr.substring(0, 4), dateStr.substring(4, 6) - 1, dateStr.substring(6, 8));
+
+    // Create Date objects for startDate and todayDate
+    const DTSTART = createDate(startDate);
+    const DTSTAMP = createDate(todayDate);
+
+    // Check for existing reservations on the same date
+    const bookedDates = getBookedDates();
+    const formattedStartDate = startDate.substring(0, 8);
+    if (bookedDates.includes(formattedStartDate)) {
+        console.log('This date is already booked. Please choose another date.');
         return;
     }
 
-    console.log("Available dates for reservation:");
-    availableDates.forEach((date, index) => {
-        console.log(`${index + 1}: ${date}`);
-    });
+    // Create a new calendar event
+    const newEvent = new ICAL.Component('VEVENT');
+    newEvent.addPropertyWithValue('ATTENDEE', attendee);
+    newEvent.addPropertyWithValue('DTSTART', ICAL.Time.fromJSDate(DTSTART));
+    newEvent.addPropertyWithValue('DTSTAMP', ICAL.Time.fromJSDate(DTSTAMP));
+    newEvent.addPropertyWithValue('METHOD', 'REQUEST');
+    newEvent.addPropertyWithValue('STATUS', 'CONFIRMED');
 
-    const chosenDate = availableDates[chosenNumber - 1];
+    // Generate confirmation code
+    const code = generateConfirmationCode();
+    newEvent.addPropertyWithValue('CONFIRMATION_CODE', code);
 
-    if (!chosenDate) {
-        throw new Error('Invalid choice. Exiting the program.');
-    }
-
-    // Validate the time format
-    if (!/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i.test(startTime)) {
-        throw new Error('Invalid time format. Exiting the program.');
-    }
-
-    startTime = convertTo24Hour(startTime);
-    const startDateTime = `${chosenDate}T${startTime}:00`;
-
-    const event = createCalendarEvent(cal, attendeeName, attendeeEmail, startDateTime, summary);
-    console.log('Reservation successful. Event UID:', event.uid());
-}
-
-
-/**
- * Cancels a reservation in the calendar.
- * 
- * @param {Object} cal - The ical-generator calendar instance.
- * 
- * Prompts the user for the event ID and removes the event with the matching ID from the calendar.
- * 
- * @throws {Error} If no reservation is found with the given ID.
- */
-
-
-function cancelReservation(cal, eventId) {
-    const events = cal.events();
-
-    const eventIndex = events.findIndex(event => event.uid() === eventId);
-    if (eventIndex !== -1) {
-        cal.events(events.filter((_, index) => index !== eventIndex));
-        console.log('Reservation cancelled successfully.');
-    } else {
-        console.log('No reservation found with the given ID.');
+    // Write the reservation to file and log the result
+    const success = writeReservationToFile(path, newEvent);
+    if (success) {
+        console.log('Reservation successful! Your confirmation code is:', code);
+    } 
+    else {
+        console.log('Failed to write reservation. Please try again.');
     }
 }
 
-/**
- * Looks up a reservation in the calendar by event ID.
- * 
- * @param {Object} cal - The ical-generator calendar instance.
- * 
- * Prompts the user for the event ID and displays details of the event with the matching ID.
- * 
- * @throws {Error} If no reservation is found with the given ID.
- */
+/*
+    * Function to look up upcoming reservations for an attendee
+    * @param {string} attendee - The name of the attendee
+*/
+function lookupReservations(attendee) {
+    try {
+        const data = fs.readFileSync(path, 'utf8');
 
+        if (!data.includes(`ATTENDEE:${attendee}`)) {
+            console.log(`No reservations found for ${attendee}.`);
+            return;
+        }
 
-function lookupReservations(cal, eventId) {
-    const event = cal.events().find(event => event.uid() === eventId);
-
-    if (event) {
-        console.log(`Found reservation: ID: ${event.uid()}, Start: ${event.start().format()}}, Summary: ${event.summary()}`);
-    } else {
-        console.log('No reservation found with the given ID.');
+        data.split('BEGIN:VEVENT').forEach(vevent => {
+            if (vevent.includes(`ATTENDEE:${attendee}`)) {
+                const match = vevent.match(/DTSTART:(\d{8}T\d{6})/);
+                if (match) {
+                    console.log('Date:', match[1]);
+                }
+            }
+        });
+    } 
+    catch (err) {
+        console.error('Error looking up reservations:', err);
     }
 }
 
+/*
+    * Function to cancel a reservation for an attendee
+    * @param {string} attendeeName - The name of the attendee
+    * @param {string} code - The confirmation code for the reservation
+*/
+function cancelReservation(attendeeName, code) {
+    try {
+        const data = fs.readFileSync(path, 'utf8');
 
-/**
- * Main function that initiates the calendar application.
- * 
- * Initializes the calendar from the existing .ics file and prompts the user to choose an action:
- * reserve, find, lookup, cancel, or reset. Executes the corresponding function based on the user's choice.
- */
+        if (!data) {
+            console.log('No reservations found.');
+            return;
+        }
 
+        const vevents = data.split('BEGIN:VEVENT');
+        let updatedData = '';
+        let reservationCancelled = false;
+
+        vevents.forEach(vevent => {
+            if (vevent.includes(`ATTENDEE:${attendeeName}`) && vevent.includes(`CONFIRMATION_CODE:${code}`)) {
+                updatedData += vevent.replace('STATUS:CONFIRMED', 'STATUS:CANCELLED');
+                reservationCancelled = true;
+            } 
+            else {
+                updatedData += `BEGIN:VEVENT${vevent}`;
+            }
+        });
+
+        if (reservationCancelled) {
+            fs.writeFileSync(path, updatedData);
+            console.log('Reservation canceled successfully.');
+        } 
+        else {
+            console.log('No matching reservation to cancel.');
+        }
+    } 
+    catch (error) {
+        console.error('Error canceling reservation:', error);
+    }
+}
+
+/*
+    * Function to find the next available dates for booking
+    * @param {string} startDate - The start date for the search (YYYY-MM-DD)
+    * @param {number} n - The number of available dates to find
+    * @returns {Array} - An array of available dates in the format YYYYMMDD
+
+*/
+function findNextAvailableDates(startDate, n) {
+    const bookedDates = getBookedDates();
+    let availableDates = [];
+    let checkDate = new Date(startDate);
+
+    while (availableDates.length < n) {
+        // Format checkDate for comparison
+        let formattedCheckDate = formatDate(checkDate);
+
+        // Check if the formatted date is not in the list of booked dates
+        if (!bookedDates.includes(formattedCheckDate)) {
+            availableDates.push(formattedCheckDate);
+        }
+
+        // Increment the date by one day for the next iteration
+        checkDate.setDate(checkDate.getDate() + 1);
+    }
+
+    return availableDates;
+}
+
+
+//Main function to display options and handle user input
 
 function main() {
-    const cal = icalGenerator({ name: 'My Calendar' });
-    const existingEvents = readICalendarFile();
+    let option;
+    
+    console.log('\nOptions:');
+    console.log('1. Find Next Available Dates');
+    console.log('2. Reserve a Date');
+    console.log('3. Lookup Upcoming Reservations');
+    console.log('4. Cancel Reservation');
+    console.log('5. Exit');
 
-    for (const key in existingEvents) {
-        if (existingEvents[key].type === 'VEVENT') {
-            createCalendarEvent(cal, existingEvents[key].attendee, existingEvents[key].start, existingEvents[key].end, existingEvents[key].summary);
-        }
-    }
+    option = prompt('Select an option (1-5): ');
 
-    const command = prompt('Enter command (reserve, find, lookup, cancel, reset): ');
-    switch (command) {
-        case 'reserve':
-            reserveDate(cal);
+    switch (option) {
+        case '1':
+            const startDate = prompt('Enter start date (YYYY-MM-DD): ');
+            const numberOfDates = parseInt(prompt('Enter the number of dates (1-4): '));
+
+            const availableDates = findNextAvailableDates(startDate, numberOfDates);
+            console.log('Available Dates:', availableDates);
             break;
-        case 'find':
-            console.log('Next available dates:', findNextAvailableDates(cal));
+        case '2':
+            const attendee = prompt('Enter attendee: ');
+            const reservationDate = prompt('Enter reservation date and time (YYYYMMDDTHHMMSS): ');
+            const todaysDate = prompt('Enter today\'s date and time (YYYYMMDDTHHMMSS): ');
+            reserveDate(attendee, reservationDate, todaysDate);
             break;
-        case 'lookup':
-            lookupReservations(cal);
+        case '3':
+            const attendeeToLookup = prompt('Enter attendee name to lookup reservations: ');
+            lookupReservations(attendeeToLookup);
             break;
-        case 'cancel':
-            cancelReservation(cal);
+        case '4':
+            cancelReservation();
+            break;
+        case '5':
+            console.log('Exiting program.');
             break;
         default:
-            console.log('Invalid command.');
+            console.log('Invalid option. Please select a valid option.');
+            break;
     }
 
-    saveCalendarToFile(cal);
 }
 
-main();
+// Call the main function
+//main();
 
 module.exports = {
-    findNextAvailableDates,
-    isWeekend,
-    isSpecialHoliday,
-    convertTo24Hour,
+    getBookedDates,
+    generateConfirmationCode,
+    writeReservationToFile,
     reserveDate,
-    cancelReservation,
+    findNextAvailableDates,
     lookupReservations,
-    createCalendarEvent,
-    readICalendarFile,
-    saveCalendarToFile,
-    isDateReserved,
-    main
+    cancelReservation
 };

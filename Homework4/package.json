@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "ical-generator": "^6.0.1",
+    "ical.js": "^1.5.0",
     "node-ical": "^0.17.2",
-    "prompt-sync": "^4.2.0"
+    "prompt-sync": "^4.2.0",
+    "readline-sync": "^1.4.10"
   }
 }

@@ -1,125 +1,87 @@
+// Testing for Homework 4. All dependencies are mocked - no actual file I/O or network requests are made. 
+// Tests are for each individual function in hw4.js and are independent of each other. 
+// Main function binds them together
+
 const fs = require('fs');
-const server = require('./hw4'); // Adjust the path according to your project structure
-const prompt = require('prompt-sync')();
+const ICAL = require('ical.js');
+const server = require('./hw4.js');
 
-// Mocking fs and prompt-sync globally
 jest.mock('fs');
-jest.mock('prompt-sync', () => {
-  return () => jest.fn();
-});
+jest.mock('ical.js');
+jest.mock('prompt-sync', () => () => jest.fn().mockReturnValue('mocked value'));
 
-// Tests for reserveDate
-describe('reserveDate Tests', () => {
-  beforeAll(() => {
-    jest.mock('moment', () => {
-      const actualMoment = jest.requireActual('moment');
-      const mockMoment = (...args) => {
-        const instance = actualMoment(...args);
-        instance.add = jest.fn((amount, unit) => actualMoment(instance).add(amount, unit));
-        instance.format = jest.fn(() => actualMoment(instance).format());
-        return instance;
-      };
-      mockMoment.utc = jest.fn(() => actualMoment.utc());
-      return mockMoment;
-    });
-  });
+describe('Reservation System', () => {
+    const mockFilePath = 'mock-cal.ics';
+    const mockData = ''; 
 
-  afterAll(() => {
-    jest.unmock('moment');
-  });
-
-  test('reserveDate handles valid reservation process correctly', () => {
-    const prompt = require('prompt-sync')();
-    prompt.mockReturnValueOnce('1') // User chooses the first available date
-           .mockReturnValueOnce('John Doe') // Name for the reservation
-           .mockReturnValueOnce('john@example.com') // Email for the reservation
-           .mockReturnValueOnce('12:00 PM') // Start time
-           .mockReturnValueOnce('Meeting with John'); // Summary
-
-    fs.readFileSync.mockReturnValue(/* Mocked calendar data */);
-    fs.writeFileSync.mockImplementation(() => {});
-
-    const calMock = {
-      createEvent: jest.fn().mockReturnValue({ uid: () => '12345' }),
-      events: jest.fn().mockReturnValue([]),
-      // Other necessary calendar functions
-    };
-
-    expect(() => server.reserveDate(calMock)).not.toThrow();
-    expect(calMock.createEvent).toHaveBeenCalled();
-  });
-
-  // Additional reserveDate tests...
-});
-
-// Tests for cancelReservation
-describe('cancelReservation Tests', () => {
-  test('cancelReservation cancels a reservation correctly', () => {
-    const prompt = require('prompt-sync')();
-    prompt.mockReturnValue('valid-event-id'); // Mock user input for event ID
-
-    const calMock = {
-      events: jest.fn().mockReturnValue([
-        { uid: () => 'valid-event-id', /* other event properties */ },
-        // Other mock events
-      ]),
-      // Other necessary calendar functions
-    };
-
-    server.cancelReservation(calMock);
-    expect(calMock.events).toHaveBeenCalledWith(/* Expected filtered events */);
-  });
-
-});
-
-// Additional tests for lookupReservations...
-// ... (previous code)
-
-// Tests for lookupReservations
-describe('lookupReservations Tests', () => {
-    let calMock;
-  
     beforeEach(() => {
-      calMock = {
-        events: jest.fn()
-      };
+        fs.writeFileSync.mockClear();
+        fs.readFileSync.mockClear();// Clears any previous spying
     });
-  
-    test('lookupReservations finds a reservation correctly', () => {
-      const prompt = require('prompt-sync')();
-      prompt.mockReturnValue('valid-event-id'); // Mock user input for event ID
-  
-      const mockEvent = {
-        uid: () => 'valid-event-id',
-        start: () => new Date('2024-02-20T12:00:00'),
-        summary: () => 'Meeting with John'
-        // Add other necessary properties of the event
-      };
-  
-      calMock.events.mockReturnValue([mockEvent]);
-  
-      console.log = jest.fn(); // Mock console.log to capture output
-      server.lookupReservations(calMock);
-  
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Found reservation'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('valid-event-id'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Meeting with John'));
+
+    describe('writeReservationToFile', () => {
+        it('Should write a reservation to file', () => {
+            fs.readFileSync.mockReturnValue(mockData);
+            const newEvent = new ICAL.Component(['vevent', [], []]);
+            const result = server.writeReservationToFile(mockFilePath, newEvent);
+            expect(result).toBe(true);
+            expect(fs.writeFileSync).toHaveBeenCalled();
+        });
     });
-  
-    test('lookupReservations does not find a reservation with an invalid ID', () => {
-      const prompt = require('prompt-sync')();
-      prompt.mockReturnValue('invalid-event-id'); // Mock user input for an invalid event ID
-  
-      calMock.events.mockReturnValue([]); // No events in the calendar
-  
-      console.log = jest.fn(); // Mock console.log to capture output
-      server.lookupReservations(calMock);
-  
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No reservation found'));
+
+    describe('reserveDate', () => {
+        it('Should reserve a date and log confirmation', () => {
+            const logSpy = jest.spyOn(console, 'log');
+            fs.readFileSync.mockReturnValue(mockData);
+            server.reserveDate('John Doe', '20240515T120000', '20240220T120000');
+            expect(logSpy).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
     });
-  
-    // Additional tests as needed...
-  });
-  
-  // ... (rest of the code)
-  
+
+    describe('generateConfirmationCode', () => {
+        it('Should generate a UID-like confirmation code', () => {
+            const code = server.generateConfirmationCode();
+            expect(code).toHaveLength(36);
+            expect(typeof code).toBe('string');
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+            expect(code).toMatch(uuidRegex);
+        });
+    });
+
+    describe('findNextAvailableDates', () => {
+        it('should find next available dates', () => {
+            fs.readFileSync.mockReturnValue(mockData);
+            const availableDates = server.findNextAvailableDates('2024-02-20', 5);
+            expect(availableDates.length).toBeLessThanOrEqual(5);
+        });
+    });
+
+    describe('getBookedDates', () => {
+        it('should return booked dates', () => {
+            fs.readFileSync.mockReturnValue(mockData);
+            const bookedDates = server.getBookedDates();
+            expect(Array.isArray(bookedDates)).toBe(true);
+        });
+    });
+
+    describe('lookupReservations', () => {
+        it('should return reservation dates for an attendee and log them', () => {
+            const logSpy = jest.spyOn(console, 'log');
+            fs.readFileSync.mockReturnValue(mockData);
+            server.lookupReservations('John Doe');
+            expect(logSpy).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
+    });
+
+    describe('cancelReservation', () => {
+        it('should cancel a reservation and log the result', () => {
+            const logSpy = jest.spyOn(console, 'log');
+            fs.readFileSync.mockReturnValue(mockData);
+            server.cancelReservation('John Doe', 'CONFIRM123');
+            expect(logSpy).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
+    });
+});
